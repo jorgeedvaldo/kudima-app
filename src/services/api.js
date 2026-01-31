@@ -50,6 +50,14 @@ export const authService = {
     getUser: async () => {
         const response = await api.get('/user');
         return response.data;
+    },
+    updateProfile: async (userData) => {
+        try {
+            const response = await api.put('/user/profile', userData); // Assuming standard update endpoint
+            return response.data;
+        } catch (error) {
+            throw error.response ? error.response.data : error;
+        }
     }
 };
 

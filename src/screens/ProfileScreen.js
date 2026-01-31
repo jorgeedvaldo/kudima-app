@@ -66,7 +66,7 @@ export default function ProfileScreen({ navigation }) {
 
     const handleMenuPress = (itemId) => {
         switch (itemId) {
-            case '1': navigation.navigate('EditProfile'); break;
+            case '1': navigation.navigate('EditProfile', { user }); break;
             case '2': navigation.navigate('Payments'); break;
             case '3': navigation.navigate('Notifications'); break;
             case '4': navigation.navigate('Security'); break;
@@ -87,7 +87,7 @@ export default function ProfileScreen({ navigation }) {
                             source={{ uri: user?.profile_image_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
                             style={styles.profileImage}
                         />
-                        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
+                        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile', { user })}>
                             <Ionicons name="camera" size={16} color="#fff" />
                         </TouchableOpacity>
                     </View>
