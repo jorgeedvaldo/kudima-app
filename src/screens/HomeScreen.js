@@ -1,35 +1,60 @@
-import React from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { dataService } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
-const categories = [
-    { id: 1, name: 'Design Gráfico', icon: 'palette', library: Ionicons },
-    { id: 2, name: 'Marketing Digital', icon: 'bullhorn', library: MaterialCommunityIcons },
-    { id: 3, name: 'Vídeo & Animação', icon: 'video', library: MaterialCommunityIcons },
-    { id: 4, name: 'Prog. & Tech', icon: 'code', library: MaterialIcons },
-    { id: 5, name: 'Música & Áudio', icon: 'music', library: FontAwesome5 },
-    { id: 6, name: 'Fotografia', icon: 'camera', library: Ionicons },
-    { id: 7, name: 'UI/UX Design', icon: 'pen-tool', library: FontAwesome5 },
-    { id: 8, name: 'Reparações', icon: 'tools', library: FontAwesome5 },
-];
-
-const popularServices = [
-    { id: 1, title: 'Limpeza Residencial', image: 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' },
-    { id: 2, title: 'Reparos Elétricos', image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' },
-    { id: 3, title: 'Encanador', image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' },
-];
-
-const popularProfessionals = [
-    { id: 1, name: 'Maria Silva', title: 'Especialista em Limpeza', rating: '4.9', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=60' },
-    { id: 2, name: 'João Sousa', title: 'Eletricista', rating: '4.7', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&auto=format&fit=crop&q=60' },
-    { id: 3, name: 'Lucas Pereira', title: 'Montador', rating: '4.8', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60' },
-];
-
 export default function HomeScreen({ navigation }) {
+    const [categories, setCategories] = useState([]);
+    const [popularServices, setPopularServices] = useState([]);
+    const [popularProfessionals, setPopularProfessionals] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [cats, servs, pros] = await Promise.all([
+                    dataService.getCategories(),
+                    dataService.getServices(), // Assuming this gives us a list we can slice for popular
+                    dataService.getProfessionals() // Assuming this gives a list
+                ]);
+
+                // Map/Filter data as needed if API response structure differs slightly from UI needs
+                // For now assuming direct mapping or slight adjustments:
+                setCategories(cats);
+                setPopularServices(servs.slice(0, 5)); // Take first 5 as popular
+                setPopularProfessionals(pros.slice(0, 5)); // Take first 5
+            } catch (error) {
+                console.error("Error fetching home data:", error);
+                // Fallback to mock data or empty state could be handled here
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Helper to render category icon/image (API might return image_url)
+    const renderCategoryIcon = (cat) => {
+        if (cat.image_url) {
+            return <Image source={{ uri: cat.image_url }} style={{ width: 30, height: 30 }} resizeMode="contain" />;
+        }
+        // Fallback icon logic if no image
+        return <Ionicons name="grid-outline" size={24} color="#333" />;
+    };
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#7F57F1" />
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <StatusBar style="light" />
@@ -71,9 +96,9 @@ export default function HomeScreen({ navigation }) {
                     {categories.map((cat) => (
                         <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => navigation.navigate('Buscar')}>
                             <View style={styles.iconContainer}>
-                                <cat.library name={cat.icon} size={24} color="#333" />
+                                {renderCategoryIcon(cat)}
                             </View>
-                            <Text style={styles.categoryName}>{cat.name}</Text>
+                            <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -91,11 +116,14 @@ export default function HomeScreen({ navigation }) {
                         <TouchableOpacity
                             key={service.id}
                             style={styles.popularCard}
-                            onPress={() => navigation.navigate('ServiceDetails')}
+                            onPress={() => navigation.navigate('ServiceDetails', { serviceId: service.id })}
                         >
-                            <Image source={{ uri: service.image }} style={styles.popularImage} />
+                            <Image
+                                source={{ uri: service.image_url || 'https://via.placeholder.com/200' }}
+                                style={styles.popularImage}
+                            />
                             <View style={styles.popularOverlay}>
-                                <Text style={styles.popularTitle}>{service.title}</Text>
+                                <Text style={styles.popularTitle}>{service.name}</Text>
                             </View>
                         </TouchableOpacity>
                     ))}
@@ -114,15 +142,20 @@ export default function HomeScreen({ navigation }) {
                         <TouchableOpacity
                             key={pro.id}
                             style={styles.proCard}
-                            onPress={() => navigation.navigate('ServiceDetails')}
+                            onPress={() => navigation.navigate('ServiceDetails', { professionalId: pro.id })}
                         >
-                            <Image source={{ uri: pro.image }} style={styles.proImage} />
+                            <Image
+                                source={{ uri: pro.profile_image_url || 'https://via.placeholder.com/150' }}
+                                style={styles.proImage}
+                            />
                             <View style={styles.proInfo}>
                                 <Text style={styles.proName}>{pro.name}</Text>
-                                <Text style={styles.proRole}>{pro.title}</Text>
+                                <Text style={styles.proRole} numberOfLines={1}>
+                                    {pro.professional_profile?.bio ? pro.professional_profile.bio.substring(0, 20) : 'Profissional'}
+                                </Text>
                                 <View style={styles.ratingRow}>
                                     <Ionicons name="star" size={12} color="#FFD700" />
-                                    <Text style={styles.ratingText}>{pro.rating}</Text>
+                                    <Text style={styles.ratingText}>5.0</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>

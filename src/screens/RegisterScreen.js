@@ -3,14 +3,40 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Keyb
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome } from '@expo/vector-icons';
 
+import { authService, setAuthToken } from '../services/api';
+
 export default function RegisterScreen({ navigation }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [phone, setPhone] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleRegister = () => {
-        // Simulate registration
-        navigation.replace('MainTabs');
+    const handleRegister = async () => {
+        if (!name || !email || !password) {
+            alert('Por favor, preencha todos os campos obrigatórios');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Defaulting role to 'client' and passing phone number
+            const data = await authService.register({
+                name,
+                email,
+                password,
+                password_confirmation: password,
+                phone: phone || '000000000', // API might require phone
+                role: 'client'
+            });
+            setAuthToken(data.access_token);
+            navigation.replace('MainTabs');
+        } catch (error) {
+            console.error(error);
+            alert('Falha no cadastro. Verifique os dados inseridos.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -38,6 +64,17 @@ export default function RegisterScreen({ navigation }) {
                         </View>
 
                         <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Telefone</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="923456789"
+                                value={phone}
+                                onChangeText={setPhone}
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
                             <Text style={styles.label}>Email</Text>
                             <TextInput
                                 style={styles.input}
@@ -60,8 +97,12 @@ export default function RegisterScreen({ navigation }) {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-                            <Text style={styles.buttonText}>Cadastrar</Text>
+                        <TouchableOpacity
+                            style={[styles.button, loading && { opacity: 0.7 }]}
+                            onPress={handleRegister}
+                            disabled={loading}
+                        >
+                            <Text style={styles.buttonText}>{loading ? 'Criando conta...' : 'Cadastrar'}</Text>
                         </TouchableOpacity>
 
                         <View style={styles.dividerContainer}>

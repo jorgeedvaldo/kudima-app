@@ -1,51 +1,105 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { dataService } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
-const professionals = [
-    {
-        id: '1',
-        name: 'Maria Silva',
-        role: 'Especialista em Limpeza',
-        rating: '4.9',
-        reviews: '120',
-        price: '5.000 Kz',
-        image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60'
-    },
-    {
-        id: '2',
-        name: 'João Sousa',
-        role: 'Limpeza e Organização',
-        rating: '4.7',
-        reviews: '85',
-        price: '4.500 Kz',
-        image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3'
-    },
-    {
-        id: '3',
-        name: 'Ana Costa',
-        role: 'Limpeza Pós-Obra',
-        rating: '5.0',
-        reviews: '42',
-        price: '6.000 Kz',
-        image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&auto=format&fit=crop&q=60'
-    },
-];
+export default function ServiceDetailsScreen({ route, navigation }) {
+    const { serviceId, professionalId } = route.params || {};
 
-export default function ServiceDetailsScreen({ navigation }) {
+    const [loading, setLoading] = useState(true);
+    const [service, setService] = useState(null);
+    const [professionalsList, setProfessionalsList] = useState([]);
     const [selectedPro, setSelectedPro] = useState(null);
+
+    useEffect(() => {
+        loadData();
+    }, [serviceId, professionalId]);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            if (serviceId) {
+                // Fetch all services to find the specific one (as per current API understanding)
+                const services = await dataService.getServices();
+                const foundService = services.find(s => s.id === serviceId);
+
+                if (foundService) {
+                    setService(foundService);
+
+                    // Fetch professionals for this category
+                    const pros = await dataService.getProfessionals(foundService.category_id);
+                    setProfessionalsList(pros);
+                }
+            } else if (professionalId) {
+                // Fetch professional details and their services
+                const pro = await dataService.getProfessionalDetails(professionalId);
+                const prosServices = await dataService.getServices({ professional_id: professionalId });
+
+                if (prosServices && prosServices.length > 0) {
+                    setService(prosServices[0]); // Pick first service to display details
+                    setProfessionalsList([pro]); // Show only this professional
+                    setSelectedPro(pro);
+                } else {
+                    // If pro has no services, maybe show a generic view or just the pro details
+                    // For now, we try to show at least the pro info if possible, referencing a generic service wrapper
+                    setService({
+                        name: 'Perfil Profissional',
+                        description: pro.professional_profile?.bio || 'Sem descrição',
+                        price: null,
+                        image_url: pro.profile_image_url
+                    });
+                    setProfessionalsList([pro]);
+                    setSelectedPro(pro);
+                }
+            } else {
+                // Fallback / Default view for testing if no params
+                const services = await dataService.getServices();
+                if (services.length > 0) {
+                    setService(services[0]);
+                    const pros = await dataService.getProfessionals(services[0].category_id);
+                    setProfessionalsList(pros);
+                }
+            }
+
+        } catch (error) {
+            console.error("Error loading service details:", error);
+            Alert.alert("Erro", "Não foi possível carregar os detalhes do serviço.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleBook = () => {
         if (!selectedPro) {
             Alert.alert("Selecione um profissional", "Por favor, escolha um profissional para continuar.");
             return;
         }
+
         Alert.alert("Sucesso", `Você escolheu ${selectedPro.name}. O pedido será iniciado.`);
         // Here you would navigate to a checkout or confirmation screen
     };
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#7F57F1" />
+            </View>
+        );
+    }
+
+    if (!service) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text>Serviço não encontrado.</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+                    <Text style={{ color: '#7F57F1' }}>Voltar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -55,7 +109,7 @@ export default function ServiceDetailsScreen({ navigation }) {
                 {/* Hero Image */}
                 <View style={styles.imageContainer}>
                     <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' }}
+                        source={{ uri: service.image_url || 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' }}
                         style={styles.image}
                     />
                     <View style={styles.headerOverlay}>
@@ -70,18 +124,18 @@ export default function ServiceDetailsScreen({ navigation }) {
 
                 <View style={styles.content}>
                     <View style={styles.titleSection}>
-                        <Text style={styles.title}>Limpeza Residencial Completa</Text>
+                        <Text style={styles.title}>{service.name}</Text>
                         <View style={styles.ratingRow}>
                             <Ionicons name="star" size={16} color="#FFD700" />
                             <Text style={styles.rating}>4.8 (120 reviews)</Text>
                             <Text style={styles.dot}>•</Text>
-                            <Text style={styles.category}>Limpeza</Text>
+                            <Text style={styles.category}>{service.category?.name || 'Geral'}</Text>
                         </View>
                     </View>
 
                     <View style={styles.priceSection}>
-                        <Text style={styles.priceLabel}>Preço médio</Text>
-                        <Text style={styles.price}>5.000 Kz <Text style={styles.perUnit}>/ hora</Text></Text>
+                        <Text style={styles.priceLabel}>Preço estimado</Text>
+                        <Text style={styles.price}>{service.price ? `${service.price} Kz` : 'A combinar'}</Text>
                     </View>
 
                     <View style={styles.divider} />
@@ -90,7 +144,7 @@ export default function ServiceDetailsScreen({ navigation }) {
                         <Text style={styles.sectionTitle}>Profissionais Disponíveis</Text>
                         <Text style={styles.sectionSubtitle}>Escolha um profissional para realizar o serviço</Text>
 
-                        {professionals.map((pro) => (
+                        {professionalsList.map((pro) => (
                             <TouchableOpacity
                                 key={pro.id}
                                 style={[
@@ -99,14 +153,14 @@ export default function ServiceDetailsScreen({ navigation }) {
                                 ]}
                                 onPress={() => setSelectedPro(pro)}
                             >
-                                <Image source={{ uri: pro.image }} style={styles.providerImage} />
+                                <Image source={{ uri: pro.profile_image_url || 'https://via.placeholder.com/150' }} style={styles.providerImage} />
                                 <View style={styles.providerInfo}>
                                     <Text style={styles.providerName}>{pro.name}</Text>
-                                    <Text style={styles.providerRole}>{pro.role}</Text>
+                                    <Text style={styles.providerRole}>{pro.professional_profile?.bio ? pro.professional_profile.bio.substring(0, 30) + '...' : 'Profissional'}</Text>
                                     <View style={styles.proRatingRow}>
                                         <Ionicons name="star" size={12} color="#FFD700" />
-                                        <Text style={styles.proRating}>{pro.rating}</Text>
-                                        <Text style={styles.proPrice}>{pro.price}</Text>
+                                        <Text style={styles.proRating}>5.0</Text>
+                                        <Text style={styles.proPrice}>{service.price ? `${service.price} Kz` : ''}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.radioContainer}>
@@ -119,14 +173,15 @@ export default function ServiceDetailsScreen({ navigation }) {
                                 </View>
                             </TouchableOpacity>
                         ))}
+                        {professionalsList.length === 0 && (
+                            <Text style={{ color: '#999', fontStyle: 'italic' }}>Nenhum profissional disponível no momento.</Text>
+                        )}
                     </View>
 
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Sobre o serviço</Text>
                         <Text style={styles.description}>
-                            Oferecemos limpeza completa para sua residência, incluindo sala, quartos, cozinha e banheiros.
-                            Nossa equipe utiliza produtos de alta qualidade para garantir a melhor higienização do seu lar.
-                            Inclui limpeza de vidros, poeira, e higienização de pisos.
+                            {service.description || 'Sem descrição disponível.'}
                         </Text>
                     </View>
                 </View>
@@ -139,7 +194,7 @@ export default function ServiceDetailsScreen({ navigation }) {
                     disabled={!selectedPro}
                 >
                     <Text style={styles.bookButtonText}>
-                        {selectedPro ? `Aceitar e Agendar (${selectedPro.price})` : 'Escolha um Profissional'}
+                        {selectedPro ? `Aceitar e Agendar ${service.price ? '(' + service.price + ' Kz)' : ''}` : 'Escolha um Profissional'}
                     </Text>
                 </TouchableOpacity>
             </View>

@@ -3,13 +3,31 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Keyb
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome } from '@expo/vector-icons';
 
+import { authService, setAuthToken } from '../services/api';
+
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        // Simulate login
-        navigation.replace('MainTabs');
+    const handleLogin = async () => {
+        if (!email || !password) {
+            alert('Por favor, preencha todos os campos');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const data = await authService.login({ email, password });
+            setAuthToken(data.access_token);
+            // Here you might want to store the token in AsyncStorage
+            navigation.replace('MainTabs');
+        } catch (error) {
+            console.error(error);
+            alert('Falha no login. Verifique suas credenciais.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -49,8 +67,12 @@ export default function LoginScreen({ navigation }) {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                            <Text style={styles.buttonText}>Entrar</Text>
+                        <TouchableOpacity
+                            style={[styles.button, loading && { opacity: 0.7 }]}
+                            onPress={handleLogin}
+                            disabled={loading}
+                        >
+                            <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.forgotButton}>

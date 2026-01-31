@@ -1,8 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, Alert } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { authService, setAuthToken } from '../services/api';
 
 export default function ProfileScreen({ navigation }) {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
     const menuItems = [
         { id: '1', icon: 'person-outline', title: 'Meus Dados', iconLib: Ionicons },
         { id: '2', icon: 'card-outline', title: 'Pagamentos', iconLib: Ionicons },
@@ -11,6 +15,54 @@ export default function ProfileScreen({ navigation }) {
         { id: '5', icon: 'headset', title: 'Ajuda e Suporte', iconLib: Ionicons },
         { id: '6', icon: 'settings-outline', title: 'Configurações', iconLib: Ionicons },
     ];
+
+    useEffect(() => {
+        loadUserProfile();
+    }, []);
+
+    const loadUserProfile = async () => {
+        try {
+            const userData = await authService.getUser();
+            setUser(userData);
+        } catch (error) {
+            console.error("Failed to load user profile:", error);
+            // Optionally redirect to login if 401
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        Alert.alert(
+            "Sair",
+            "Tem certeza que deseja sair?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Sair",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await authService.logout();
+                            setAuthToken(null);
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Login' }],
+                            });
+                        } catch (error) {
+                            console.error("Logout failed", error);
+                            // Force logout anyway locally
+                            setAuthToken(null);
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Login' }],
+                            });
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const handleMenuPress = (itemId) => {
         switch (itemId) {
@@ -32,15 +84,15 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.profileInfo}>
                     <View style={styles.imageContainer}>
                         <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
+                            source={{ uri: user?.profile_image_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
                             style={styles.profileImage}
                         />
                         <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
                             <Ionicons name="camera" size={16} color="#fff" />
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.name}>Damilk</Text>
-                    <Text style={styles.email}>damilk@email.com</Text>
+                    <Text style={styles.name}>{user?.name || 'Usuário'}</Text>
+                    <Text style={styles.email}>{user?.email || 'email@exemplo.com'}</Text>
                 </View>
 
                 <View style={styles.statsContainer}>
@@ -77,7 +129,10 @@ export default function ProfileScreen({ navigation }) {
                         </TouchableOpacity>
                     ))}
 
-                    <TouchableOpacity style={[styles.menuItem, { marginTop: 20 }]}>
+                    <TouchableOpacity
+                        style={[styles.menuItem, { marginTop: 20 }]}
+                        onPress={handleLogout}
+                    >
                         <View style={[styles.menuIcon, { backgroundColor: '#FFEBEE' }]}>
                             <Ionicons name="log-out-outline" size={22} color="#F44336" />
                         </View>
