@@ -24,7 +24,7 @@ export default function PaymentsScreen({ navigation }) {
                             <Text style={styles.cardExpiry}>Expira 12/25</Text>
                         </View>
                     </View>
-                    <Ionicons name="check-checkmark-circle" size={24} color="#7F57F1" />
+                    <Ionicons name="checkmark-circle" size={24} color="#7F57F1" />
                 </View>
 
                 <View style={styles.card}>

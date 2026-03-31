@@ -22,7 +22,7 @@ export default function PopularServicesScreen({ route, navigation }) {
             if (searchText) filters.search = searchText;
             
             const data = await dataService.getServices(filters);
-            setServices(Array.isArray(data) ? data : (data?.data || []));
+            setServices(data);
         } catch (error) {
             console.error("Error fetching services:", error);
         } finally {

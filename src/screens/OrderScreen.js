@@ -33,7 +33,7 @@ export default function OrderScreen({ navigation }) {
             setLoading(true);
             try {
                 const data = await orderService.getRequests();
-                setOrders(Array.isArray(data) ? data : (data?.data || []));
+                setOrders(data);
             } catch (error) {
                 console.error("Error fetching orders:", error);
             } finally {

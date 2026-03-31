@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { dataService } from '../services/api';
+import { dataService, orderService } from '../services/api';
 import { getImageUrl } from '../api/axios';
 
 const { width } = Dimensions.get('window');
@@ -14,6 +14,7 @@ export default function ServiceDetailsScreen({ route, navigation }) {
     const [service, setService] = useState(null);
     const [professionalsList, setProfessionalsList] = useState([]);
     const [selectedPro, setSelectedPro] = useState(null);
+    const [booking, setBooking] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -23,53 +24,40 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         setLoading(true);
         try {
             if (serviceId) {
-                // Fetch all services to find the specific one (as per current API understanding)
-                const responseData = await dataService.getServices();
-                const servicesArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
-                const foundService = servicesArray.find(s => s.id === serviceId);
+                const services = await dataService.getServices();
+                const foundService = services.find(s => s.id === serviceId || s.id === Number(serviceId));
 
                 if (foundService) {
                     setService(foundService);
-
-                    // Fetch professionals for this category
                     const pros = await dataService.getProfessionals(foundService.category_id);
                     setProfessionalsList(pros);
                 }
             } else if (professionalId) {
-                // Fetch professional details and their services
-                const proRes = await dataService.getProfessionalDetails(professionalId);
-                const pro = Array.isArray(proRes) ? proRes[0] : (proRes?.data || proRes);
-                
-                const prosServicesRes = await dataService.getServices({ professional_id: professionalId });
-                const prosServices = Array.isArray(prosServicesRes) ? prosServicesRes : (prosServicesRes?.data || []);
+                const pro = await dataService.getProfessionalDetails(professionalId);
+                const prosServices = await dataService.getServices({ professional_id: professionalId });
 
                 if (prosServices && prosServices.length > 0) {
-                    setService(prosServices[0]); // Pick first service to display details
-                    setProfessionalsList([pro]); // Show only this professional
+                    setService(prosServices[0]);
+                    setProfessionalsList([pro]);
                     setSelectedPro(pro);
                 } else {
-                    // If pro has no services, maybe show a generic view or just the pro details
-                    // For now, we try to show at least the pro info if possible, referencing a generic service wrapper
                     setService({
-                        name: 'Perfil Profissional',
-                        description: pro.professional_profile?.bio || 'Sem descrição',
+                        name: pro?.name || 'Perfil Profissional',
+                        description: pro?.professional_profile?.bio || 'Sem descrição',
                         price: null,
-                        image_url: pro.avatar_url || pro.professional_profile?.profile_picture_url
+                        image_url: pro?.avatar_url || pro?.professional_profile?.profile_picture_url
                     });
                     setProfessionalsList([pro]);
                     setSelectedPro(pro);
                 }
             } else {
-                // Fallback / Default view for testing if no params
-                const responseData = await dataService.getServices();
-                const servicesArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
-                if (servicesArray.length > 0) {
-                    setService(servicesArray[0]);
-                    const pros = await dataService.getProfessionals(servicesArray[0].category_id);
-                    setProfessionalsList(Array.isArray(pros) ? pros : (pros?.data || []));
+                const services = await dataService.getServices();
+                if (services.length > 0) {
+                    setService(services[0]);
+                    const pros = await dataService.getProfessionals(services[0].category_id);
+                    setProfessionalsList(pros);
                 }
             }
-
         } catch (error) {
             console.error("Error loading service details:", error);
             Alert.alert("Erro", "Não foi possível carregar os detalhes do serviço.");
@@ -78,14 +66,54 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         }
     };
 
-    const handleBook = () => {
+    const handleBook = async () => {
         if (!selectedPro) {
             Alert.alert("Selecione um profissional", "Por favor, escolha um profissional para continuar.");
             return;
         }
 
-        Alert.alert("Sucesso", `Você escolheu ${selectedPro.name}. O pedido será iniciado.`);
-        // Here you would navigate to a checkout or confirmation screen
+        // Use window.confirm on web, Alert.alert on native
+        const confirmMsg = `Deseja solicitar "${service.name}" com ${selectedPro.name}${service.price ? ' por ' + service.price + ' Kz' : ''}?`;
+        
+        const doRequest = async () => {
+            setBooking(true);
+            try {
+                await orderService.createRequest({
+                    service_id: service.id,
+                    professional_id: selectedPro.id,
+                    category_id: service.category_id,
+                    description: `Pedido de ${service.name}`,
+                });
+                Alert.alert(
+                    "Pedido Enviado! ✅",
+                    "O seu pedido foi enviado com sucesso. O profissional vai analisar e responder em breve."
+                );
+                // Navigate to orders after a short delay
+                setTimeout(() => navigation.navigate('MainTabs', { screen: 'Pedidos' }), 1500);
+            } catch (error) {
+                console.error("Error creating request:", error?.response?.data || error);
+                const msg = error?.response?.data?.message || 'Não foi possível criar o pedido. Tente novamente.';
+                Alert.alert("Erro", msg);
+            } finally {
+                setBooking(false);
+            }
+        };
+
+        // Check if running on web
+        if (typeof window !== 'undefined' && window.confirm) {
+            if (window.confirm(confirmMsg)) {
+                await doRequest();
+            }
+        } else {
+            Alert.alert(
+                "Confirmar Pedido",
+                confirmMsg,
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Confirmar", onPress: doRequest }
+                ]
+            );
+        }
     };
 
     if (loading) {
@@ -195,12 +223,12 @@ export default function ServiceDetailsScreen({ route, navigation }) {
 
             <View style={styles.footer}>
                 <TouchableOpacity
-                    style={[styles.bookButton, !selectedPro && styles.disabledButton]}
+                    style={[styles.bookButton, (!selectedPro || booking) && styles.disabledButton]}
                     onPress={handleBook}
-                    disabled={!selectedPro}
+                    disabled={!selectedPro || booking}
                 >
                     <Text style={styles.bookButtonText}>
-                        {selectedPro ? `Aceitar e Agendar ${service.price ? '(' + service.price + ' Kz)' : ''}` : 'Escolha um Profissional'}
+                        {booking ? 'Enviando Pedido...' : selectedPro ? `Solicitar Serviço ${service.price ? '(' + service.price + ' Kz)' : ''}` : 'Escolha um Profissional'}
                     </Text>
                 </TouchableOpacity>
             </View>

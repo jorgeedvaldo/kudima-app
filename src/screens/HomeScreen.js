@@ -4,7 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
-import api, { getImageUrl } from '../api/axios';
+import { getImageUrl } from '../api/axios';
+import { dataService } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -21,19 +22,14 @@ export default function HomeScreen({ navigation }) {
         const fetchData = async () => {
             try {
                 const [cats, servs, pros] = await Promise.all([
-                    api.get('/api/categories'),
-                    api.get('/api/services'),
-                    api.get('/api/professionals')
+                    dataService.getCategories(),
+                    dataService.getServices(),
+                    dataService.getProfessionals()
                 ]);
 
-                // Map/Filter data as needed if API response structure differs slightly from UI needs
-                const catsArray = Array.isArray(cats.data) ? cats.data : (cats.data?.data || []);
-                const servsArray = Array.isArray(servs.data) ? servs.data : (servs.data?.data || []);
-                const prosArray = Array.isArray(pros.data) ? pros.data : (pros.data?.data || []);
-
-                setCategories(catsArray);
-                setPopularServices(servsArray.slice(0, 5)); // Take first 5 as popular
-                setPopularProfessionals(prosArray.slice(0, 5)); // Take first 5
+                setCategories(cats);
+                setPopularServices(servs.slice(0, 5));
+                setPopularProfessionals(pros.slice(0, 5));
             } catch (error) {
                 console.error("Error fetching home data:", error);
                 // Fallback to mock data or empty state could be handled here

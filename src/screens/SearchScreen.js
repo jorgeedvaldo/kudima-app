@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image, Dimensions } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import api, { getImageUrl } from '../api/axios';
+import { getImageUrl } from '../api/axios';
+import { dataService } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -31,8 +32,8 @@ export default function SearchScreen({ navigation }) {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const response = await api.get('/api/categories');
-                setCategories(response.data);
+                const cats = await dataService.getCategories();
+                setCategories(cats);
             } catch (error) {
                 console.error("Error fetching categories:", error);
             } finally {
