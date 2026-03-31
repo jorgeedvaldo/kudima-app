@@ -31,10 +31,6 @@ export default function EditProfileScreen({ navigation, route }) {
         setAddress(userData.address || '');
     };
 
-    const loadUser = async () => {
-        // Obsolete as globalUser handles it
-    };
-
     const handleSave = async () => {
         setSaving(true);
         try {

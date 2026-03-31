@@ -1,28 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image, Dimensions } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image, Dimensions, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getImageUrl } from '../api/axios';
 import { dataService } from '../services/api';
 
 const { width } = Dimensions.get('window');
-
-const categories = [
-    { id: 1, name: 'Design', icon: 'palette', library: Ionicons, color: '#E3F2FD' },
-    { id: 2, name: 'Marketing', icon: 'bullhorn', library: MaterialCommunityIcons, color: '#FFF3E0' },
-    { id: 3, name: 'Vídeo', icon: 'video', library: MaterialCommunityIcons, color: '#FCE4EC' },
-    { id: 4, name: 'Tech', icon: 'code', library: MaterialIcons, color: '#E8F5E9' },
-    { id: 5, name: 'Música', icon: 'music', library: FontAwesome5, color: '#F3E5F5' },
-    { id: 6, name: 'Foto', icon: 'camera', library: Ionicons, color: '#E0F7FA' },
-    { id: 7, name: 'Limpeza', icon: 'broom', library: MaterialCommunityIcons, color: '#FFF8E1' },
-    { id: 8, name: 'Reparos', icon: 'tools', library: FontAwesome5, color: '#FFEBEE' },
-];
-
-const recentSearches = [
-    'Eletricista residencial',
-    'Limpeza de sofá',
-    'Desenvolvimento Web',
-    'Professor de Inglês'
-];
 
 export default function SearchScreen({ navigation }) {
     const [categories, setCategories] = useState([]);
@@ -71,72 +53,32 @@ export default function SearchScreen({ navigation }) {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Pesquisas Recentes</Text>
-                    <View style={styles.recentTags}>
-                        {recentSearches.map((search, index) => (
-                            <TouchableOpacity key={index} style={styles.recentTag}>
-                                <Ionicons name="time-outline" size={16} color="#666" style={{ marginRight: 6 }} />
-                                <Text style={styles.recentText}>{search}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Navegar por Categorias</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.seeAll}>Ver Todas</Text>
-                        </TouchableOpacity>
                     </View>
 
-                    <View style={styles.categoriesGrid}>
-                        {categories.map((cat) => (
-                            <TouchableOpacity 
-                                key={cat.id} 
-                                style={[styles.categoryCard, { backgroundColor: '#F7F7F7' }]}
-                                onPress={() => navigation.navigate('PopularServices', { categoryId: cat.id, categoryName: cat.name })}
-                            >
-                                <View style={styles.categoryIcon}>
-                                    {cat.image_url ? (
-                                        <Image source={{ uri: getImageUrl(cat.image_url) }} style={{ width: 30, height: 30 }} resizeMode="contain" />
-                                    ) : (
-                                        <Ionicons name="grid" size={28} color="#7F57F1" />
-                                    )}
-                                </View>
-                                <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Tendências</Text>
-                    <View style={styles.trendingContainer}>
-                        <TouchableOpacity style={styles.trendingItem}>
-                            <Image
-                                source={{ uri: 'https://images.unsplash.com/photo-1590856029826-c7a73142bbf1?w=500&auto=format&fit=crop&q=60' }}
-                                style={styles.trendingImage}
-                            />
-                            <View style={styles.trendingInfo}>
-                                <Text style={styles.trendingTitle}>Lavagem a Seco</Text>
-                                <Text style={styles.trendingSubtitle}>+120 buscas hoje</Text>
-                            </View>
-                            <Ionicons name="trending-up" size={20} color="#7F57F1" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.trendingItem}>
-                            <Image
-                                source={{ uri: 'https://images.unsplash.com/photo-1581092921461-eab62e97a782?w=500&auto=format&fit=crop&q=60' }}
-                                style={styles.trendingImage}
-                            />
-                            <View style={styles.trendingInfo}>
-                                <Text style={styles.trendingTitle}>Manutenção de AC</Text>
-                                <Text style={styles.trendingSubtitle}>+85 buscas hoje</Text>
-                            </View>
-                            <Ionicons name="trending-up" size={20} color="#7F57F1" />
-                        </TouchableOpacity>
-                    </View>
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#7F57F1" style={{ marginTop: 20 }} />
+                    ) : (
+                        <View style={styles.categoriesGrid}>
+                            {categories.map((cat) => (
+                                <TouchableOpacity 
+                                    key={cat.id} 
+                                    style={[styles.categoryCard, { backgroundColor: '#F7F7F7' }]}
+                                    onPress={() => navigation.navigate('PopularServices', { categoryId: cat.id, categoryName: cat.name })}
+                                >
+                                    <View style={styles.categoryIcon}>
+                                        {cat.image_url ? (
+                                            <Image source={{ uri: getImageUrl(cat.image_url) }} style={{ width: 30, height: 30 }} resizeMode="contain" />
+                                        ) : (
+                                            <Ionicons name="grid" size={28} color="#7F57F1" />
+                                        )}
+                                    </View>
+                                    <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </View>
 
                 <View style={{ height: 40 }} />
@@ -194,38 +136,13 @@ const styles = StyleSheet.create({
         color: '#333',
         marginBottom: 15,
     },
-    seeAll: {
-        fontSize: 14,
-        color: '#7F57F1',
-        fontWeight: '600',
-    },
-    recentTags: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    recentTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F7F7F7',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        marginRight: 10,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#eee',
-    },
-    recentText: {
-        fontSize: 14,
-        color: '#333',
-    },
     categoriesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
     },
     categoryCard: {
-        width: (width - 60) / 2, // 2 columns with spacing
+        width: (width - 60) / 2,
         aspectRatio: 1.5,
         borderRadius: 16,
         padding: 15,
@@ -242,37 +159,5 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#333',
-    },
-    trendingContainer: {
-        marginTop: -5,
-    },
-    trendingItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: '#f0f0f0',
-    },
-    trendingImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 10,
-    },
-    trendingInfo: {
-        flex: 1,
-        marginLeft: 15,
-    },
-    trendingTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    trendingSubtitle: {
-        fontSize: 12,
-        color: '#4CAF50',
-        marginTop: 4,
     },
 });

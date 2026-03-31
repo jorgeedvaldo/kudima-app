@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { FontAwesome } from '@expo/vector-icons';
 
 import { AuthContext } from '../context/AuthContext';
 import { updateBaseUrl } from '../api/axios';
@@ -109,24 +108,6 @@ export default function LoginScreen({ navigation }) {
                             </View>
                         )}
 
-                        <View style={styles.dividerContainer}>
-                            <View style={styles.divider} />
-                            <Text style={styles.dividerText}>ou continue com</Text>
-                            <View style={styles.divider} />
-                        </View>
-
-                        <View style={styles.socialContainer}>
-                            <TouchableOpacity style={styles.socialButton}>
-                                <FontAwesome name="google" size={24} color="#DB4437" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.socialButton}>
-                                <FontAwesome name="apple" size={24} color="#000" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.socialButton}>
-                                <FontAwesome name="facebook" size={24} color="#4267B2" />
-                            </TouchableOpacity>
-                        </View>
-
                         <View style={styles.footer}>
                             <Text style={styles.footerText}>Não tem uma conta? </Text>
                             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -210,37 +191,6 @@ const styles = StyleSheet.create({
     forgotText: {
         color: '#7F57F1',
         fontSize: 14,
-    },
-    dividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 30,
-    },
-    divider: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#eee',
-    },
-    dividerText: {
-        marginHorizontal: 10,
-        color: '#999',
-        fontSize: 14,
-    },
-    socialContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 20,
-        marginBottom: 30,
-    },
-    socialButton: {
-        width: 60,
-        height: 60,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#eee',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#fff',
     },
     footer: {
         flexDirection: 'row',
