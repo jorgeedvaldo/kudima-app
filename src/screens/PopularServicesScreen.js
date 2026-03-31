@@ -1,35 +1,52 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView, StatusBar, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView, StatusBar, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { dataService } from '../services/api';
+import { getImageUrl } from '../api/axios';
 
-const services = [
-    { id: '1', title: 'Limpeza Residencial', provider: 'Maria Silva', rating: '4.8', price: '5.000 Kz', image: 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' },
-    { id: '2', title: 'Reparos Elétricos', provider: 'João Sousa', rating: '4.7', price: '4.500 Kz', image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' },
-    { id: '3', title: 'Encanador Profissional', provider: 'Ana Costa', rating: '5.0', price: '6.000 Kz', image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' },
-    { id: '4', title: 'Jardinagem', provider: 'Pedro Santos', rating: '4.9', price: '5.500 Kz', image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=500&auto=format&fit=crop&q=60' },
-    { id: '5', title: 'Pintura Residencial', provider: 'Carlos Oliveira', rating: '4.6', price: '4.000 Kz', image: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=500&auto=format&fit=crop&q=60' },
-    { id: '6', title: 'Montagem de Móveis', provider: 'Lucas Pereira', rating: '4.8', price: '3.500 Kz', image: 'https://images.unsplash.com/photo-1581092921461-eab62e97a782?w=500&auto=format&fit=crop&q=60' },
-];
+export default function PopularServicesScreen({ route, navigation }) {
+    const { categoryId, categoryName, searchQuery } = route?.params || {};
+    const [services, setServices] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchText, setSearchText] = useState(searchQuery || '');
 
-export default function PopularServicesScreen({ navigation }) {
+    useEffect(() => {
+        loadServices();
+    }, [categoryId]);
+
+    const loadServices = async () => {
+        setLoading(true);
+        try {
+            const filters = {};
+            if (categoryId) filters.category_id = categoryId;
+            if (searchText) filters.search = searchText;
+            
+            const data = await dataService.getServices(filters);
+            setServices(Array.isArray(data) ? data : (data?.data || []));
+        } catch (error) {
+            console.error("Error fetching services:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
     const renderItem = ({ item }) => (
         <TouchableOpacity
             style={styles.card}
-            onPress={() => navigation.navigate('ServiceDetails')}
+            onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })}
         >
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
+            <Image source={{ uri: getImageUrl(item.image_url) || 'https://via.placeholder.com/200' }} style={styles.cardImage} />
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
-                    <Text style={styles.serviceName}>{item.title}</Text>
+                    <Text style={styles.serviceName}>{item.name}</Text>
                     <View style={styles.ratingBadge}>
                         <Ionicons name="star" size={12} color="#FFD700" />
-                        <Text style={styles.ratingText}>{item.rating}</Text>
+                        <Text style={styles.ratingText}>5.0</Text>
                     </View>
                 </View>
-                <Text style={styles.providerName}>por {item.provider}</Text>
+                <Text style={styles.providerName}>Categoria: {item.category?.name || categoryName || 'Geral'}</Text>
 
                 <View style={styles.cardFooter}>
-                    <Text style={styles.price}>{item.price}</Text>
+                    <Text style={styles.price}>{item.price ? `${item.price} Kz` : 'A combinar'}</Text>
                     <View style={styles.bookButton}>
                         <Text style={styles.bookButtonText}>Reservar</Text>
                     </View>
@@ -46,25 +63,35 @@ export default function PopularServicesScreen({ navigation }) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#333" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Serviços Populares</Text>
+                <Text style={styles.headerTitle}>{categoryName ? categoryName : (searchQuery ? `Busca: ${searchQuery}` : 'Serviços')}</Text>
             </View>
 
             <View style={styles.searchContainer}>
                 <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="Buscar nos populares..."
+                    placeholder="Buscar serviços..."
                     placeholderTextColor="#999"
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    onSubmitEditing={loadServices}
                 />
             </View>
 
-            <FlatList
-                data={services}
-                keyExtractor={item => item.id}
-                renderItem={renderItem}
-                contentContainerStyle={styles.listContainer}
-                showsVerticalScrollIndicator={false}
-            />
+            {loading ? (
+                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                    <ActivityIndicator size="large" color="#7F57F1" />
+                </View>
+            ) : (
+                <FlatList
+                    data={services}
+                    keyExtractor={item => item.id?.toString() || Math.random().toString()}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContainer}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={<Text style={{textAlign: 'center', color: '#999', marginTop: 50}}>Nenhum serviço encontrado.</Text>}
+                />
+            )}
         </SafeAreaView>
     );
 }

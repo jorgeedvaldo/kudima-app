@@ -3,9 +3,11 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Keyb
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome } from '@expo/vector-icons';
 
-import { authService, setAuthToken } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 
 export default function RegisterScreen({ navigation }) {
+    const { register } = React.useContext(AuthContext);
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -20,17 +22,9 @@ export default function RegisterScreen({ navigation }) {
 
         setLoading(true);
         try {
-            // Defaulting role to 'client' and passing phone number
-            const data = await authService.register({
-                name,
-                email,
-                password,
-                password_confirmation: password,
-                phone: phone || '000000000', // API might require phone
-                role: 'client'
-            });
-            setAuthToken(data.access_token);
-            navigation.replace('MainTabs');
+            // Defaulting role to 'client' passing true/false for isProfessional
+            await register(name, email, phone || '000000000', password, false);
+            // AppNavigator will handle transitioning automatically
         } catch (error) {
             console.error(error);
             alert('Falha no cadastro. Verifique os dados inseridos.');

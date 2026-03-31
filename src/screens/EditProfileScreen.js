@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { authService } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
+import { getImageUrl } from '../api/axios';
 
 export default function EditProfileScreen({ navigation, route }) {
+    const { updateProfile, userInfo: globalUser } = React.useContext(AuthContext);
     const { user: initialUser } = route.params || {};
 
     const [name, setName] = useState('');
@@ -16,10 +18,10 @@ export default function EditProfileScreen({ navigation, route }) {
     useEffect(() => {
         if (initialUser) {
             populateFields(initialUser);
-        } else {
-            loadUser();
+        } else if (globalUser) {
+            populateFields(globalUser);
         }
-    }, [initialUser]);
+    }, [initialUser, globalUser]);
 
     const populateFields = (userData) => {
         setName(userData.name || '');
@@ -30,28 +32,21 @@ export default function EditProfileScreen({ navigation, route }) {
     };
 
     const loadUser = async () => {
-        setLoading(true);
-        try {
-            const userData = await authService.getUser();
-            populateFields(userData);
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Erro', 'Não foi possível carregar os dados.');
-            navigation.goBack();
-        } finally {
-            setLoading(false);
-        }
+        // Obsolete as globalUser handles it
     };
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            await authService.updateProfile({
+            const payload = {
                 name,
-                email, // Email change might require verification or be restricted
                 phone,
-                address
-            });
+            };
+            if (address && address.trim() !== '') {
+                payload.address = address;
+            }
+
+            await updateProfile(payload);
             Alert.alert('Sucesso', 'Perfil atualizado com sucesso!', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
@@ -91,7 +86,7 @@ export default function EditProfileScreen({ navigation, route }) {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.imageSection}>
                     <Image
-                        source={{ uri: initialUser?.profile_image_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
+                        source={{ uri: getImageUrl(globalUser?.avatar_url || globalUser?.professional_profile?.profile_picture_url) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
                         style={styles.profileImage}
                     />
                     <TouchableOpacity style={styles.changePhotoText}>

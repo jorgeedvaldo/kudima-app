@@ -1,86 +1,85 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { orderService } from '../services/api';
+import { getImageUrl } from '../api/axios';
 
 // Mock Data
-const orders = [
-    {
-        id: '1',
-        service: 'Limpeza Residencial',
-        provider: 'Maria Silva',
-        date: '15 Mai, 14:00',
-        price: '5.000 Kz',
-        status: 'Em andamento',
-        statusColor: '#7F57F1',
-        image: 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60',
-    },
-    {
-        id: '2',
-        service: 'Reparos Elétricos',
-        provider: 'João Sousa',
-        date: '18 Mai, 09:00',
-        price: '12.000 Kz',
-        status: 'Agendado',
-        statusColor: '#FFA500',
-        image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    },
-    {
-        id: '3',
-        service: 'Encanador',
-        provider: 'Pedro Santos',
-        date: '10 Mai, 10:30',
-        price: '8.000 Kz',
-        status: 'Concluído',
-        statusColor: '#4CAF50', // Green
-        image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    },
-    {
-        id: '4',
-        service: 'Jardinagem',
-        provider: 'Carlos Oliveira',
-        date: '05 Mai, 08:00',
-        price: '15.000 Kz',
-        status: 'Cancelado',
-        statusColor: '#F44336', // Red
-        image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3',
-    },
-];
+const getStatusInfo = (status) => {
+    switch (status?.toLowerCase()) {
+        case 'pending': return { text: 'Pendente', color: '#FFA500', isHistory: false };
+        case 'accepted': return { text: 'Agendado', color: '#FF9800', isHistory: false };
+        case 'in_progress': return { text: 'Em andamento', color: '#7F57F1', isHistory: false };
+        case 'completed': return { text: 'Concluído', color: '#4CAF50', isHistory: true };
+        case 'cancelled':
+        case 'rejected': return { text: 'Cancelado', color: '#F44336', isHistory: true };
+        default: return { text: status || 'Desconhecido', color: '#999', isHistory: false };
+    }
+};
 
-export default function OrderScreen() {
+const formatDate = (dateStr) => {
+    if (!dateStr) return 'Sem data definida';
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+export default function OrderScreen({ navigation }) {
     const [activeTab, setActiveTab] = useState('Ativos');
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            try {
+                const data = await orderService.getRequests();
+                setOrders(Array.isArray(data) ? data : (data?.data || []));
+            } catch (error) {
+                console.error("Error fetching orders:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOrders();
+    }, []);
 
     const filteredOrders = orders.filter(order => {
+        const info = getStatusInfo(order.status);
         if (activeTab === 'Ativos') {
-            return ['Em andamento', 'Agendado'].includes(order.status);
+            return !info.isHistory;
         } else {
-            return ['Concluído', 'Cancelado'].includes(order.status);
+            return info.isHistory;
         }
     });
 
-    const renderOrderItem = ({ item }) => (
-        <View style={styles.card}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
-            <View style={styles.cardContent}>
-                <View style={styles.cardHeader}>
-                    <Text style={styles.serviceName}>{item.service}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: item.statusColor + '20' }]}>
-                        <Text style={[styles.statusText, { color: item.statusColor }]}>{item.status}</Text>
+    const renderOrderItem = ({ item }) => {
+        const info = getStatusInfo(item.status);
+        const image = getImageUrl(item.service?.image_url) || 'https://via.placeholder.com/200';
+        return (
+            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('OrderDetails', { order: item })}>
+                <Image source={{ uri: image }} style={styles.cardImage} />
+                <View style={styles.cardContent}>
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.serviceName}>{item.service?.name || 'Serviço'}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: info.color + '20' }]}>
+                            <Text style={[styles.statusText, { color: info.color }]}>{info.text}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.providerName}>Profissional: {item.professional?.name || 'N/A'}</Text>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.cardFooter}>
+                        <View style={styles.footerItem}>
+                            <Ionicons name="calendar-outline" size={16} color="#666" />
+                            <Text style={styles.footerText}>{formatDate(item.scheduled_date || item.created_at)}</Text>
+                        </View>
+                        <Text style={styles.price}>{item.price ? `${item.price} Kz` : 'A combinar'}</Text>
                     </View>
                 </View>
-                <Text style={styles.providerName}>Profissional: {item.provider}</Text>
-
-                <View style={styles.divider} />
-
-                <View style={styles.cardFooter}>
-                    <View style={styles.footerItem}>
-                        <Ionicons name="calendar-outline" size={16} color="#666" />
-                        <Text style={styles.footerText}>{item.date}</Text>
-                    </View>
-                    <Text style={styles.price}>{item.price}</Text>
-                </View>
-            </View>
-        </View>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -105,19 +104,25 @@ export default function OrderScreen() {
                 </TouchableOpacity>
             </View>
 
-            <FlatList
-                data={filteredOrders}
-                renderItem={renderOrderItem}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.listContainer}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <MaterialCommunityIcons name="clipboard-text-outline" size={64} color="#ccc" />
-                        <Text style={styles.emptyText}>Nenhum pedido encontrado</Text>
-                    </View>
-                }
-            />
+            {loading ? (
+                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                    <ActivityIndicator size="large" color="#7F57F1" />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredOrders}
+                    renderItem={renderOrderItem}
+                    keyExtractor={item => item.id?.toString() || Math.random().toString()}
+                    contentContainerStyle={styles.listContainer}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <MaterialCommunityIcons name="clipboard-text-outline" size={64} color="#ccc" />
+                            <Text style={styles.emptyText}>Nenhum pedido encontrado</Text>
+                        </View>
+                    }
+                />
+            )}
         </SafeAreaView>
     );
 }

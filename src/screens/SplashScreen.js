@@ -21,12 +21,6 @@ export default function SplashScreen({ navigation }) {
                 useNativeDriver: true,
             }),
         ]).start();
-
-        const timer = setTimeout(() => {
-            navigation.replace('Login'); // Navigate to Login instead of Home
-        }, 3000);
-
-        return () => clearTimeout(timer);
     }, []);
 
     return (

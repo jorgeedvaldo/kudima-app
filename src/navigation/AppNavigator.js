@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -72,27 +73,39 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
+    const { userToken, isLoading } = useContext(AuthContext);
+
+    if (isLoading) {
+        return <SplashScreen navigation={{replace: () => {}}} />;
+    }
+
     return (
-        <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Splash" component={SplashScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {userToken == null ? (
+                <>
+                    <Stack.Screen name="Login" component={LoginScreen} />
+                    <Stack.Screen name="Register" component={RegisterScreen} />
+                </>
+            ) : (
+                <>
+                    <Stack.Screen name="MainTabs" component={MainTabs} />
+                    
+                    {/* Detail Screens */}
+                    <Stack.Screen name="Chat" component={ChatScreen} />
+                    <Stack.Screen name="NewMessage" component={NewMessageScreen} />
+                    <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
+                    <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />
 
-            {/* Detail Screens */}
-            <Stack.Screen name="Chat" component={ChatScreen} />
-            <Stack.Screen name="NewMessage" component={NewMessageScreen} />
-            <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-            <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />
-
-            {/* Profile Sub Screens */}
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-            <Stack.Screen name="Payments" component={PaymentsScreen} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="Security" component={SecurityScreen} />
-            <Stack.Screen name="Help" component={HelpScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="PopularServices" component={PopularServicesScreen} />
+                    {/* Profile Sub Screens */}
+                    <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+                    <Stack.Screen name="Payments" component={PaymentsScreen} />
+                    <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                    <Stack.Screen name="Security" component={SecurityScreen} />
+                    <Stack.Screen name="Help" component={HelpScreen} />
+                    <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen name="PopularServices" component={PopularServicesScreen} />
+                </>
+            )}
         </Stack.Navigator>
     );
 }

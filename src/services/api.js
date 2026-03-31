@@ -89,4 +89,11 @@ export const dataService = {
     }
 };
 
+export const orderService = {
+    getRequests: async () => {
+        const response = await api.get('/requests');
+        return response.data;
+    }
+};
+
 export default api;

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaVi
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { dataService } from '../services/api';
+import { getImageUrl } from '../api/axios';
 
 const { width } = Dimensions.get('window');
 
@@ -23,8 +24,9 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         try {
             if (serviceId) {
                 // Fetch all services to find the specific one (as per current API understanding)
-                const services = await dataService.getServices();
-                const foundService = services.find(s => s.id === serviceId);
+                const responseData = await dataService.getServices();
+                const servicesArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
+                const foundService = servicesArray.find(s => s.id === serviceId);
 
                 if (foundService) {
                     setService(foundService);
@@ -35,8 +37,11 @@ export default function ServiceDetailsScreen({ route, navigation }) {
                 }
             } else if (professionalId) {
                 // Fetch professional details and their services
-                const pro = await dataService.getProfessionalDetails(professionalId);
-                const prosServices = await dataService.getServices({ professional_id: professionalId });
+                const proRes = await dataService.getProfessionalDetails(professionalId);
+                const pro = Array.isArray(proRes) ? proRes[0] : (proRes?.data || proRes);
+                
+                const prosServicesRes = await dataService.getServices({ professional_id: professionalId });
+                const prosServices = Array.isArray(prosServicesRes) ? prosServicesRes : (prosServicesRes?.data || []);
 
                 if (prosServices && prosServices.length > 0) {
                     setService(prosServices[0]); // Pick first service to display details
@@ -49,18 +54,19 @@ export default function ServiceDetailsScreen({ route, navigation }) {
                         name: 'Perfil Profissional',
                         description: pro.professional_profile?.bio || 'Sem descrição',
                         price: null,
-                        image_url: pro.profile_image_url
+                        image_url: pro.avatar_url || pro.professional_profile?.profile_picture_url
                     });
                     setProfessionalsList([pro]);
                     setSelectedPro(pro);
                 }
             } else {
                 // Fallback / Default view for testing if no params
-                const services = await dataService.getServices();
-                if (services.length > 0) {
-                    setService(services[0]);
-                    const pros = await dataService.getProfessionals(services[0].category_id);
-                    setProfessionalsList(pros);
+                const responseData = await dataService.getServices();
+                const servicesArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
+                if (servicesArray.length > 0) {
+                    setService(servicesArray[0]);
+                    const pros = await dataService.getProfessionals(servicesArray[0].category_id);
+                    setProfessionalsList(Array.isArray(pros) ? pros : (pros?.data || []));
                 }
             }
 
@@ -109,7 +115,7 @@ export default function ServiceDetailsScreen({ route, navigation }) {
                 {/* Hero Image */}
                 <View style={styles.imageContainer}>
                     <Image
-                        source={{ uri: service.image_url || 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' }}
+                        source={{ uri: getImageUrl(service.image_url) || 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' }}
                         style={styles.image}
                     />
                     <View style={styles.headerOverlay}>
@@ -153,7 +159,7 @@ export default function ServiceDetailsScreen({ route, navigation }) {
                                 ]}
                                 onPress={() => setSelectedPro(pro)}
                             >
-                                <Image source={{ uri: pro.profile_image_url || 'https://via.placeholder.com/150' }} style={styles.providerImage} />
+                                <Image source={{ uri: getImageUrl(pro.avatar_url || pro.professional_profile?.profile_picture_url) || 'https://via.placeholder.com/150' }} style={styles.providerImage} />
                                 <View style={styles.providerInfo}>
                                     <Text style={styles.providerName}>{pro.name}</Text>
                                     <Text style={styles.providerRole}>{pro.professional_profile?.bio ? pro.professional_profile.bio.substring(0, 30) + '...' : 'Profissional'}</Text>

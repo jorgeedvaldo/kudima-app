@@ -3,30 +3,37 @@ import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image,
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import { dataService } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
+import api, { getImageUrl } from '../api/axios';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
+    const { userInfo } = React.useContext(AuthContext);
+
     const [categories, setCategories] = useState([]);
     const [popularServices, setPopularServices] = useState([]);
     const [popularProfessionals, setPopularProfessionals] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchText, setSearchText] = useState('');
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const [cats, servs, pros] = await Promise.all([
-                    dataService.getCategories(),
-                    dataService.getServices(), // Assuming this gives us a list we can slice for popular
-                    dataService.getProfessionals() // Assuming this gives a list
+                    api.get('/api/categories'),
+                    api.get('/api/services'),
+                    api.get('/api/professionals')
                 ]);
 
                 // Map/Filter data as needed if API response structure differs slightly from UI needs
-                // For now assuming direct mapping or slight adjustments:
-                setCategories(cats);
-                setPopularServices(servs.slice(0, 5)); // Take first 5 as popular
-                setPopularProfessionals(pros.slice(0, 5)); // Take first 5
+                const catsArray = Array.isArray(cats.data) ? cats.data : (cats.data?.data || []);
+                const servsArray = Array.isArray(servs.data) ? servs.data : (servs.data?.data || []);
+                const prosArray = Array.isArray(pros.data) ? pros.data : (pros.data?.data || []);
+
+                setCategories(catsArray);
+                setPopularServices(servsArray.slice(0, 5)); // Take first 5 as popular
+                setPopularProfessionals(prosArray.slice(0, 5)); // Take first 5
             } catch (error) {
                 console.error("Error fetching home data:", error);
                 // Fallback to mock data or empty state could be handled here
@@ -38,10 +45,9 @@ export default function HomeScreen({ navigation }) {
         fetchData();
     }, []);
 
-    // Helper to render category icon/image (API might return image_url)
     const renderCategoryIcon = (cat) => {
         if (cat.image_url) {
-            return <Image source={{ uri: cat.image_url }} style={{ width: 30, height: 30 }} resizeMode="contain" />;
+            return <Image source={{ uri: getImageUrl(cat.image_url) }} style={{ width: 30, height: 30 }} resizeMode="contain" />;
         }
         // Fallback icon logic if no image
         return <Ionicons name="grid-outline" size={24} color="#333" />;
@@ -64,7 +70,7 @@ export default function HomeScreen({ navigation }) {
                 <SafeAreaView edges={['top', 'left', 'right']}>
                     <View style={styles.headerTop}>
                         <View>
-                            <Text style={styles.greeting}>Olá, Damilk 👋</Text>
+                            <Text style={styles.greeting}>Olá, {userInfo?.name || 'Usuário'} 👋</Text>
                             <Text style={styles.headerTitle}>Vamos encontrar o{'\n'}melhor talento para você</Text>
                         </View>
                         <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notifications')}>
@@ -78,6 +84,13 @@ export default function HomeScreen({ navigation }) {
                             style={styles.searchInput}
                             placeholder="Buscar serviço"
                             placeholderTextColor="#999"
+                            value={searchText}
+                            onChangeText={setSearchText}
+                            onSubmitEditing={() => {
+                                if (searchText.trim()) {
+                                    navigation.navigate('PopularServices', { searchQuery: searchText });
+                                }
+                            }}
                         />
                     </View>
                 </SafeAreaView>
@@ -94,7 +107,7 @@ export default function HomeScreen({ navigation }) {
 
                 <View style={styles.categoriesGrid}>
                     {categories.map((cat) => (
-                        <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => navigation.navigate('Buscar')}>
+                        <TouchableOpacity key={cat.id} style={styles.categoryItem} onPress={() => navigation.navigate('PopularServices', { categoryId: cat.id, categoryName: cat.name })}>
                             <View style={styles.iconContainer}>
                                 {renderCategoryIcon(cat)}
                             </View>
@@ -119,7 +132,7 @@ export default function HomeScreen({ navigation }) {
                             onPress={() => navigation.navigate('ServiceDetails', { serviceId: service.id })}
                         >
                             <Image
-                                source={{ uri: service.image_url || 'https://via.placeholder.com/200' }}
+                                source={{ uri: getImageUrl(service.image_url) || 'https://via.placeholder.com/200' }}
                                 style={styles.popularImage}
                             />
                             <View style={styles.popularOverlay}>
@@ -145,7 +158,7 @@ export default function HomeScreen({ navigation }) {
                             onPress={() => navigation.navigate('ServiceDetails', { professionalId: pro.id })}
                         >
                             <Image
-                                source={{ uri: pro.profile_image_url || 'https://via.placeholder.com/150' }}
+                                source={{ uri: getImageUrl(pro.avatar_url || pro.professional_profile?.profile_picture_url) || 'https://via.placeholder.com/150' }}
                                 style={styles.proImage}
                             />
                             <View style={styles.proInfo}>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, Alert } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { authService, setAuthToken } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
+import { getImageUrl } from '../api/axios';
 
 export default function ProfileScreen({ navigation }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { logout, userInfo: user } = React.useContext(AuthContext);
+    const [loading, setLoading] = useState(false);
 
     const menuItems = [
         { id: '1', icon: 'person-outline', title: 'Meus Dados', iconLib: Ionicons },
@@ -17,22 +18,11 @@ export default function ProfileScreen({ navigation }) {
     ];
 
     useEffect(() => {
-        loadUserProfile();
+        // User profile is now globally provided by AuthContext
+        setLoading(false);
     }, []);
 
-    const loadUserProfile = async () => {
-        try {
-            const userData = await authService.getUser();
-            setUser(userData);
-        } catch (error) {
-            console.error("Failed to load user profile:", error);
-            // Optionally redirect to login if 401
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
+    const handleLogout = () => {
         Alert.alert(
             "Sair",
             "Tem certeza que deseja sair?",
@@ -42,22 +32,8 @@ export default function ProfileScreen({ navigation }) {
                     text: "Sair",
                     style: "destructive",
                     onPress: async () => {
-                        try {
-                            await authService.logout();
-                            setAuthToken(null);
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Login' }],
-                            });
-                        } catch (error) {
-                            console.error("Logout failed", error);
-                            // Force logout anyway locally
-                            setAuthToken(null);
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Login' }],
-                            });
-                        }
+                        await logout();
+                        // AppNavigator will automatically transition to Login when userToken becomes null
                     }
                 }
             ]
@@ -84,7 +60,7 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.profileInfo}>
                     <View style={styles.imageContainer}>
                         <Image
-                            source={{ uri: user?.profile_image_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
+                            source={{ uri: getImageUrl(user?.avatar_url || user?.professional_profile?.profile_picture_url) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
                             style={styles.profileImage}
                         />
                         <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile', { user })}>

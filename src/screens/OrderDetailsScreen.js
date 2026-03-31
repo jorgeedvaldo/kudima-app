@@ -1,10 +1,49 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { getImageUrl } from '../api/axios';
+
+const getStatusInfo = (status) => {
+    switch (status?.toLowerCase()) {
+        case 'pending': return { text: 'Pendente', color: '#FFA500', desc: 'Aguardando o aceite do profissional.' };
+        case 'accepted': return { text: 'Agendado', color: '#FF9800', desc: 'O profissional aceitou o pedido.' };
+        case 'in_progress': return { text: 'Em andamento', color: '#7F57F1', desc: 'O serviço está em andamento.' };
+        case 'completed': return { text: 'Concluído', color: '#4CAF50', desc: 'O serviço foi finalizado.' };
+        case 'cancelled':
+        case 'rejected': return { text: 'Cancelado', color: '#F44336', desc: 'O pedido foi cancelado ou rejeitado.' };
+        default: return { text: status || 'Desconhecido', color: '#999', desc: '' };
+    }
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return 'Sem data definida';
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? '' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
 
 export default function OrderDetailsScreen({ navigation, route }) {
-    // Mock data if no params
-    const { orderId = '#12345' } = route.params || {};
+    const { order } = route.params || {};
+
+    if (!order) {
+        return (
+            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: '#999' }}>Nenhum detalhe do pedido encontrado.</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+                    <Text style={{ color: '#7F57F1' }}>Voltar</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    const info = getStatusInfo(order.status);
+    const serviceImg = getImageUrl(order.service?.image_url) || 'https://via.placeholder.com/200';
+    const proImg = getImageUrl(order.professional?.avatar_url || order.professional?.professional_profile?.profile_picture_url) || 'https://via.placeholder.com/150';
 
     return (
         <SafeAreaView style={styles.container}>
@@ -14,7 +53,7 @@ export default function OrderDetailsScreen({ navigation, route }) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#333" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Pedido {orderId}</Text>
+                <Text style={styles.headerTitle}>Pedido #{order.id}</Text>
                 <TouchableOpacity>
                     <Text style={styles.helpText}>Ajuda</Text>
                 </TouchableOpacity>
@@ -26,16 +65,14 @@ export default function OrderDetailsScreen({ navigation, route }) {
                 <View style={styles.statusCard}>
                     <View style={styles.statusHeader}>
                         <Text style={styles.statusLabel}>Status do Pedido</Text>
-                        <View style={styles.statusBadge}>
-                            <Text style={styles.statusText}>EM ANDAMENTO</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: info.color + '20' }]}>
+                            <Text style={[styles.statusText, { color: info.color }]}>{info.text}</Text>
                         </View>
                     </View>
                     <View style={styles.progressBar}>
-                        <View style={[styles.progressStep, styles.activeStep]} />
-                        <View style={[styles.progressStep, styles.activeStep]} />
-                        <View style={styles.progressStep} />
+                        <View style={[styles.progressStep, info.text !== 'Desconhecido' ? {backgroundColor: info.color} : {}]} />
                     </View>
-                    <Text style={styles.statusDesc}>O profissional está a caminho do local.</Text>
+                    <Text style={styles.statusDesc}>{info.desc}</Text>
                 </View>
 
                 {/* Service Info */}
@@ -43,13 +80,13 @@ export default function OrderDetailsScreen({ navigation, route }) {
                     <Text style={styles.sectionTitle}>Detalhes do Serviço</Text>
                     <View style={styles.serviceCard}>
                         <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1584622050111-993a426fbf0a?w=500&auto=format&fit=crop&q=60' }}
+                            source={{ uri: serviceImg }}
                             style={styles.serviceImage}
                         />
                         <View style={styles.serviceInfo}>
-                            <Text style={styles.serviceName}>Limpeza Residencial</Text>
-                            <Text style={styles.serviceCategory}>Limpeza</Text>
-                            <Text style={styles.price}>5.000 Kz</Text>
+                            <Text style={styles.serviceName}>{order.service?.name || 'Serviço'}</Text>
+                            <Text style={styles.serviceCategory}>{order.service?.category?.name || 'Geral'}</Text>
+                            <Text style={styles.price}>{order.price ? `${order.price} Kz` : 'A combinar'}</Text>
                         </View>
                     </View>
                 </View>
@@ -59,15 +96,11 @@ export default function OrderDetailsScreen({ navigation, route }) {
                     <Text style={styles.sectionTitle}>Profissional</Text>
                     <View style={styles.proCard}>
                         <Image
-                            source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60' }}
+                            source={{ uri: proImg }}
                             style={styles.proImage}
                         />
                         <View style={styles.proInfo}>
-                            <Text style={styles.proName}>Maria Silva</Text>
-                            <View style={styles.ratingContainer}>
-                                <Ionicons name="star" size={14} color="#FFD700" />
-                                <Text style={styles.rating}>4.8 (120 avaliações)</Text>
-                            </View>
+                            <Text style={styles.proName}>{order.professional?.name || 'N/A'}</Text>
                         </View>
                         <View style={styles.actionButtons}>
                             <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Chat')}>
@@ -85,15 +118,15 @@ export default function OrderDetailsScreen({ navigation, route }) {
                     <Text style={styles.sectionTitle}>Agendamento</Text>
                     <View style={styles.infoRow}>
                         <Ionicons name="calendar-outline" size={20} color="#7F57F1" />
-                        <Text style={styles.infoText}>15 Maio, 2024</Text>
+                        <Text style={styles.infoText}>{formatDate(order.scheduled_date || order.created_at)}</Text>
                     </View>
                     <View style={styles.infoRow}>
                         <Ionicons name="time-outline" size={20} color="#7F57F1" />
-                        <Text style={styles.infoText}>14:00 - 16:00</Text>
+                        <Text style={styles.infoText}>{formatTime(order.scheduled_date || order.created_at)}</Text>
                     </View>
                     <View style={styles.infoRow}>
                         <Ionicons name="location-outline" size={20} color="#7F57F1" />
-                        <Text style={styles.infoText}>Rua dos Exemplos, 123, Luanda</Text>
+                        <Text style={styles.infoText}>{order.details?.address || order.address || 'Endereço não fornecido'}</Text>
                     </View>
                 </View>
 
@@ -102,17 +135,19 @@ export default function OrderDetailsScreen({ navigation, route }) {
                     <Text style={styles.sectionTitle}>Pagamento</Text>
                     <View style={styles.paymentRow}>
                         <Text style={styles.paymentLabel}>Método</Text>
-                        <Text style={styles.paymentValue}>Cartão de Crédito (**** 1234)</Text>
+                        <Text style={styles.paymentValue}>{order.payment_method || 'Numerário / Transferência'}</Text>
                     </View>
                     <View style={[styles.paymentRow, { marginTop: 10 }]}>
                         <Text style={styles.paymentLabel}>Total</Text>
-                        <Text style={[styles.paymentValue, { color: '#7F57F1', fontWeight: 'bold' }]}>5.000 Kz</Text>
+                        <Text style={[styles.paymentValue, { color: '#7F57F1', fontWeight: 'bold' }]}>{order.price ? `${order.price} Kz` : 'A combinar'}</Text>
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.cancelButton}>
-                    <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
-                </TouchableOpacity>
+                {!info.isHistory && (
+                    <TouchableOpacity style={styles.cancelButton} onPress={() => Alert.alert('Aviso', 'Funcionalidade para cancelar pedido não implementada.')}>
+                        <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
+                    </TouchableOpacity>
+                )}
 
                 <View style={{ height: 40 }} />
             </ScrollView>

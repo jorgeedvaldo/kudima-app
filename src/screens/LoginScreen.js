@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome } from '@expo/vector-icons';
 
-import { authService, setAuthToken } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
+import { updateBaseUrl } from '../api/axios';
 
 export default function LoginScreen({ navigation }) {
+    const { login } = React.useContext(AuthContext);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showConfig, setShowConfig] = useState(false);
+    const [customApiUrl, setCustomApiUrl] = useState('');
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -18,16 +23,21 @@ export default function LoginScreen({ navigation }) {
 
         setLoading(true);
         try {
-            const data = await authService.login({ email, password });
-            setAuthToken(data.access_token);
-            // Here you might want to store the token in AsyncStorage
-            navigation.replace('MainTabs');
+            await login(email, password);
+            // AppNavigator will automatically transition to MainTabs
         } catch (error) {
             console.error(error);
             alert('Falha no login. Verifique suas credenciais.');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSaveConfig = async () => {
+        if (!customApiUrl) return;
+        await updateBaseUrl(customApiUrl);
+        Alert.alert('Sucesso', 'Endereço da API atualizado. Reinicie a app se necessário.');
+        setShowConfig(false);
     };
 
     return (
@@ -78,6 +88,26 @@ export default function LoginScreen({ navigation }) {
                         <TouchableOpacity style={styles.forgotButton}>
                             <Text style={styles.forgotText}>Esqueceu a senha?</Text>
                         </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => setShowConfig(!showConfig)} style={{ marginTop: 15, alignSelf: 'center' }}>
+                            <Text style={{ color: '#999', fontSize: 12 }}>Configurar Servidor API</Text>
+                        </TouchableOpacity>
+
+                        {showConfig && (
+                            <View style={{ marginTop: 15, backgroundColor: '#f5f5f5', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#eee' }}>
+                                <Text style={{fontSize: 12, color: '#666', marginBottom: 8}}>Insira a URL local da sua máquina (ex: http://192.168.1.100:8000)</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: '#fff', padding: 12 }]}
+                                    placeholder="http://192.168.x.x:8000"
+                                    value={customApiUrl}
+                                    onChangeText={setCustomApiUrl}
+                                    autoCapitalize="none"
+                                />
+                                <TouchableOpacity onPress={handleSaveConfig} style={[styles.button, { marginTop: 10, padding: 12 }]}>
+                                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Salvar URL</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
                         <View style={styles.dividerContainer}>
                             <View style={styles.divider} />

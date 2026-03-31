@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Image, Dimensions } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import api, { getImageUrl } from '../api/axios';
 
 const { width } = Dimensions.get('window');
 
@@ -22,7 +23,24 @@ const recentSearches = [
     'Professor de Inglês'
 ];
 
-export default function SearchScreen() {
+export default function SearchScreen({ navigation }) {
+    const [categories, setCategories] = useState([]);
+    const [searchText, setSearchText] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await api.get('/api/categories');
+                setCategories(response.data);
+            } catch (error) {
+                console.error("Error fetching categories:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCategories();
+    }, []);
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -35,6 +53,13 @@ export default function SearchScreen() {
                         placeholder="O que você está procurando?"
                         placeholderTextColor="#999"
                         autoFocus={false}
+                        value={searchText}
+                        onChangeText={setSearchText}
+                        onSubmitEditing={() => {
+                            if (searchText.trim()) {
+                                navigation.navigate('PopularServices', { searchQuery: searchText });
+                            }
+                        }}
                     />
                     <TouchableOpacity>
                         <Ionicons name="options-outline" size={24} color="#7F57F1" />
@@ -66,11 +91,19 @@ export default function SearchScreen() {
 
                     <View style={styles.categoriesGrid}>
                         {categories.map((cat) => (
-                            <TouchableOpacity key={cat.id} style={[styles.categoryCard, { backgroundColor: cat.color }]}>
+                            <TouchableOpacity 
+                                key={cat.id} 
+                                style={[styles.categoryCard, { backgroundColor: '#F7F7F7' }]}
+                                onPress={() => navigation.navigate('PopularServices', { categoryId: cat.id, categoryName: cat.name })}
+                            >
                                 <View style={styles.categoryIcon}>
-                                    <cat.library name={cat.icon} size={28} color="#333" />
+                                    {cat.image_url ? (
+                                        <Image source={{ uri: getImageUrl(cat.image_url) }} style={{ width: 30, height: 30 }} resizeMode="contain" />
+                                    ) : (
+                                        <Ionicons name="grid" size={28} color="#7F57F1" />
+                                    )}
                                 </View>
-                                <Text style={styles.categoryName}>{cat.name}</Text>
+                                <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
